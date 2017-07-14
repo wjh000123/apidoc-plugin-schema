@@ -145,46 +145,92 @@ function traverse(schema, p, group) {
     // console.log('param',param);
     if (!param) { continue; }
 
-    const type = makeType(param);
-    const size = makeSize(param);
-    const allowedValues = makeAllowedValues(param);
+    if (schema && schema.oneOf && Array.isArray(schema.oneOf)) {
+      schema.oneOf.forEach((item) => {
+        const type = makeType(item);
+        const size = makeSize(item);
+        const allowedValues = makeAllowedValues(item);
 
-    let description = param.description;
-    if (param.type === 'array') {
-      description += ` ${param.items.description}`;
-    }
+        let description = item.description;
+        if (item.type === 'array') {
+          description += ` ${item.items.description}`;
+        }
 
-    // make field
-    const parent = p ? `${p}.` : '';
-    let field = parent + key;
+        // make field
+        const parent = p ? `${p}.` : '';
+        let field = parent + key;
 
-    if (exists(Object.keys(param), 'default')) {
-      if (typeof param.default === 'object') {
-        field += `='${JSON.stringify(param.default)}'`;
-      } else {
-        field += `=${param.default}`;
+        if (exists(Object.keys(item), 'default')) {
+          if (typeof item.default === 'object') {
+            field += `='${JSON.stringify(item.default)}'`;
+          } else {
+            field += `=${item.default}`;
+          }
+        }
+
+        if (!isRequired(schema, key)) {
+          field = `[${field}]`;
+        }
+
+        if (p) key = `${p}.${key}`;
+        const g = group ? `(${group}) ` : '';
+        // make group
+        params[key] = `${g}{${type}${size}${allowedValues}} ${field} ${description}`;
+        // console.log(parent+key, params[parent + key])
+        let subs = {};
+        // var subgroup = p ? p+'.' : ''; // TODO apidoc - groups cannot have `.` in them
+        if (item.type === 'array' && item.items.type === 'object') {
+          subs = traverse(item.items, key, group); // subgroup+
+        } else if (item.type === 'object') {
+          subs = traverse(item, key, group); // subgroup+
+        }
+        for (const subKey in subs) {
+          if (!subs.hasOwnProperty(subKey)) { continue; }
+          params[`${key}.${subKey}`] = subs[subKey];
+        }
+      });
+    } else {
+      const type = makeType(param);
+      const size = makeSize(param);
+      const allowedValues = makeAllowedValues(param);
+
+      let description = param.description;
+      if (param.type === 'array') {
+        description += ` ${param.items.description}`;
       }
-    }
 
-    if (!isRequired(schema, key)) {
-      field = `[${field}]`;
-    }
+      // make field
+      const parent = p ? `${p}.` : '';
+      let field = parent + key;
 
-    if (p) key = `${p}.${key}`;
-    const g = group ? `(${group}) ` : '';
-    // make group
-    params[key] = `${g}{${type}${size}${allowedValues}} ${field} ${description}`;
-    // console.log(parent+key, params[parent + key])
-    let subs = {};
-    // var subgroup = p ? p+'.' : ''; // TODO apidoc - groups cannot have `.` in them
-    if (param.type === 'array' && param.items.type === 'object') {
-      subs = traverse(param.items, key, group); // subgroup+
-    } else if (param.type === 'object') {
-      subs = traverse(param, key, group); // subgroup+
-    }
-    for (const subKey in subs) {
-      if (!subs.hasOwnProperty(subKey)) { continue; }
-      params[`${key}.${subKey}`] = subs[subKey];
+      if (exists(Object.keys(param), 'default')) {
+        if (typeof param.default === 'object') {
+          field += `='${JSON.stringify(param.default)}'`;
+        } else {
+          field += `=${param.default}`;
+        }
+      }
+
+      if (!isRequired(schema, key)) {
+        field = `[${field}]`;
+      }
+
+      if (p) key = `${p}.${key}`;
+      const g = group ? `(${group}) ` : '';
+      // make group
+      params[key] = `${g}{${type}${size}${allowedValues}} ${field} ${description}`;
+      // console.log(parent+key, params[parent + key])
+      let subs = {};
+      // var subgroup = p ? p+'.' : ''; // TODO apidoc - groups cannot have `.` in them
+      if (param.type === 'array' && param.items.type === 'object') {
+        subs = traverse(param.items, key, group); // subgroup+
+      } else if (param.type === 'object') {
+        subs = traverse(param, key, group); // subgroup+
+      }
+      for (const subKey in subs) {
+        if (!subs.hasOwnProperty(subKey)) { continue; }
+        params[`${key}.${subKey}`] = subs[subKey];
+      }
     }
   }
 
