@@ -145,8 +145,8 @@ function traverse(schema, p, group) {
     // console.log('param',param);
     if (!param) { continue; }
 
-    if (schema && schema.oneOf && Array.isArray(schema.oneOf)) {
-      schema.oneOf.forEach((item) => {
+    if (param && param.oneOf && Array.isArray(param.oneOf)) {
+      param.oneOf.forEach((item) => {
         const type = makeType(item);
         const size = makeSize(item);
         const allowedValues = makeAllowedValues(item);
